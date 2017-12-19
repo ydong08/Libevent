@@ -1939,6 +1939,7 @@ event_base_loop(struct event_base *base, int flags)
 		}
 
 		/* If we have no events, we just exit */
+		//无事件注册了则退出循环
 		if (0==(flags&EVLOOP_NO_EXIT_ON_EMPTY) &&
 		    !event_haveevents(base) && !N_ACTIVE_CALLBACKS(base)) {
 			event_debug(("%s: no events registered.", __func__));
@@ -1950,6 +1951,7 @@ event_base_loop(struct event_base *base, int flags)
 
 		clear_time_cache(base);
 
+		//内部使用epoll_wait()等待事件，不过仅仅处理读写事件，信号事件在evsignal_process()函数处理  
 		res = evsel->dispatch(base, tv_p);
 
 		if (res == -1) {
@@ -1959,10 +1961,13 @@ event_base_loop(struct event_base *base, int flags)
 			goto done;
 		}
 
+		//获得当前时间，更新缓存，缓存的作用是无需调用系统调用获得时间，省时 
 		update_time_cache(base);
 
+		//检查小根堆的事件是否到时，并进行删除过期事件和插入就绪链表的动作
 		timeout_process(base);
 
+		//有就绪事件则调用事件注册的回调函数 
 		if (N_ACTIVE_CALLBACKS(base)) {
 			int n = event_process_active(base);
 			if ((flags & EVLOOP_ONCE)
