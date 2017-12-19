@@ -1882,7 +1882,7 @@ event_loop(int flags)
 int
 event_base_loop(struct event_base *base, int flags)
 {
-	const struct eventop *evsel = base->evsel;
+	const struct eventop *evsel = base->evsel;//选择了epoll机制（如果之前选择了epoll）
 	struct timeval tv;
 	struct timeval *tv_p;
 	int res, done, retval = 0;
@@ -1900,10 +1900,10 @@ event_base_loop(struct event_base *base, int flags)
 
 	base->running_loop = 1;
 
-	clear_time_cache(base);
+	clear_time_cache(base);//清除时间缓存，好让下面的gettime获得当前系统时间而不是获得缓存的时间 
 
 	if (base->sig.ev_signal_added && base->sig.ev_n_signals_added)
-		evsig_set_base_(base);
+		evsig_set_base_(base);//该变量也是一个全局的变量，赋值后关于信号的一些操作默认用到这个base
 
 	done = 0;
 
@@ -1927,6 +1927,7 @@ event_base_loop(struct event_base *base, int flags)
 		}
 
 		tv_p = &tv;
+		//如果没有就绪的事件，则获得接下来需要最小等待时间，用作epoll_wait的时间参数 
 		if (!N_ACTIVE_CALLBACKS(base) && !(flags & EVLOOP_NONBLOCK)) {
 			timeout_next(base, &tv_p);
 		} else {
@@ -1934,7 +1935,7 @@ event_base_loop(struct event_base *base, int flags)
 			 * if we have active events, we just poll new events
 			 * without waiting.
 			 */
-			evutil_timerclear(&tv);
+			evutil_timerclear(&tv);//有就绪事件则无需等待epoll_wait，时间设置为0
 		}
 
 		/* If we have no events, we just exit */
